@@ -1,7 +1,6 @@
 import logging
 import shutil
-from functools import cached_property
-from typing import Optional
+from typing import Optional, Self, ClassVar
 
 import cv2
 from pydantic import BaseModel, DirectoryPath, FilePath
@@ -14,16 +13,15 @@ from mextractor.utils import dump_image
 logger = logging.getLogger()
 
 
-class MextractorMetadata(BaseModel, frozen=True):
+class BaseMextractorMetadata(BaseModel, frozen=True):
     name: str
     resolution: tuple[int, int]
-    average_fps: Optional[float] = None
-    video_length_in_seconds: Optional[float] = None
-
     image: Optional[NpNDArrayUint8] = None
 
+    dump_suffix: ClassVar[str]
+
     @classmethod
-    def load(cls, mextractor_dir: DirectoryPath) -> "MextractorMetadata":
+    def load(cls, mextractor_dir: DirectoryPath) -> Self:
         image_array: Optional[NpNDArrayUint8] = None
         for file in mextractor_dir.iterdir():
             if "-image" not in file.stem:
@@ -32,6 +30,7 @@ class MextractorMetadata(BaseModel, frozen=True):
             if image_array is not None:
                 msg = f"More than one image in mextractor directory:\n  {mextractor_dir}"
                 raise ValueError(msg)
+
             image_array = cv2.imread(str(file))
 
         metadata_path: FilePath
@@ -68,11 +67,19 @@ class MextractorMetadata(BaseModel, frozen=True):
             yaml.dump(metadata, out_yaml)
         return dump_dir
 
-    @property
-    def fps(self) -> float | None:
-        if self.average_fps:
-            logger.debug("Frame per second (FPS) from video is an average")
-            return self.average_fps
+
+class ImageMextractorMetadata(BaseMextractorMetadata):
+    dump_suffix = "image"
 
 
-load = MextractorMetadata.load
+load_image = ImageMextractorMetadata.load
+
+
+class VideoMextractorMetadata(BaseMextractorMetadata):
+    average_fps: str
+    video_length_in_seconds: float
+
+    dump_suffix = "video"
+
+
+load_video = VideoMextractorMetadata.load

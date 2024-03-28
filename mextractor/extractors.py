@@ -1,21 +1,21 @@
 import cv2
-from pydantic import FilePath, validate_arguments
+from pydantic import FilePath, validate_call
 
-from mextractor.base import MextractorMetadata
+from mextractor.base import ImageMextractorMetadata, VideoMextractorMetadata
 
 
-@validate_arguments
-def extract_image(path_to_image: FilePath, include_image: bool = True) -> MextractorMetadata:
+@validate_call
+def extract_image(path_to_image: FilePath, include_image: bool = True) -> ImageMextractorMetadata:
     image = cv2.imread(str(path_to_image))
 
-    return MextractorMetadata(
+    return ImageMextractorMetadata(
         name=path_to_image.stem,
         resolution=(image.shape[1], image.shape[0]),
         image=image if include_image else None,
     )
 
 
-@validate_arguments
+@validate_call
 def extract_video_frame(
     path_to_video: FilePath,
     frame_to_extract_time: str | int = "middle",
@@ -49,29 +49,31 @@ def extract_video_frame(
     return frame
 
 
-@validate_arguments
+@validate_call
 def extract_video(
     path_to_video: FilePath,
     include_image: bool = True,
     frame_to_extract_time: str | int = "middle",
-) -> MextractorMetadata:
+) -> VideoMextractorMetadata:
     try:
         import ffmpeg
     except ImportError:
         msg = "Extra to extract video metadata not installed. Install by:\npip install mextractor[video-extract]"
         raise ImportError(msg)
 
-    ffmpeg_metadata = ffmpeg.probe(path_to_video)["streams"][0]
+    ffmpeg_probe = ffmpeg.probe(path_to_video)
+    video_streams = [stream for stream in ffmpeg_probe["streams"] if stream["codec_type"] == "video"]
 
-    if "/" in ffmpeg_metadata["avg_frame_rate"]:
-        numerator, denominator = ffmpeg_metadata["avg_frame_rate"].split("/")
-        average_fps = int(numerator) / int(denominator)
-    else:
-        average_fps = float(ffmpeg_metadata["avg_frame_rate"])
+    if not video_streams:
+        raise ValueError("No video stream found")
 
-    return MextractorMetadata(
+    # Assuming the first video stream is the one we want
+    video_stream_metadata = video_streams[0]
+
+    return VideoMextractorMetadata(
         name=path_to_video.stem,
-        resolution=(ffmpeg_metadata["width"], ffmpeg_metadata["height"]),
-        average_fps=average_fps,
+        resolution=(video_stream_metadata["width"], video_stream_metadata["height"]),
+        average_fps=video_stream_metadata["avg_frame_rate"],
+        video_length_in_seconds=float(ffmpeg_probe["format"]["duration"]),
         image=extract_video_frame(path_to_video, frame_to_extract_time) if include_image else None,
     )

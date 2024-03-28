@@ -4,9 +4,9 @@ from concurrent.futures import ThreadPoolExecutor
 from shutil import rmtree
 from typing import Optional
 
-from pydantic import DirectoryPath, FilePath, validate_arguments
+from pydantic import DirectoryPath, FilePath, validate_call
 
-from mextractor.base import MextractorMetadata
+from mextractor.base import ImageMextractorMetadata, VideoMextractorMetadata
 from mextractor.constants import VIDEO_SUFFIXES
 from mextractor.extractors import extract_image, extract_video, extract_video_frame
 from mextractor.utils import dump_image
@@ -17,7 +17,7 @@ def extract_and_dump_image(
     path_to_image: FilePath,
     include_image: bool = True,
     lossy_compress_image: bool = True,
-) -> MextractorMetadata:
+) -> ImageMextractorMetadata:
     metadata = extract_image(path_to_image, include_image)
     metadata.dump(dump_dir, include_image, lossy_compress_image)
     return metadata
@@ -28,13 +28,13 @@ def extract_and_dump_video(
     path_to_video: FilePath,
     include_image: bool = True,
     lossy_compress_image: bool = True,
-) -> MextractorMetadata:
+) -> VideoMextractorMetadata:
     metadata = extract_video(path_to_video, include_image)
     metadata.dump(dump_dir, include_image, lossy_compress_image)
     return metadata
 
 
-@validate_arguments
+@validate_call
 def mextract_videos_in_subdirs(
     root_dir: DirectoryPath, video_file_suffix: Optional[str] = None, only_frame: bool = False, concurrent: bool = True
 ) -> None:
@@ -56,13 +56,15 @@ def mextract_videos_in_subdirs(
 
             if video_file_suffix and video_file_suffix in dest_path.suffix or dest_path.suffix in VIDEO_SUFFIXES:
                 if only_frame:
-                    futures.append(executor.submit(
-                        dump_image,
-                        extract_video_frame(source_path),
-                        dest_dir,
-                        source_path.stem,
-                        lossy_compress_image=False,
-                    ))
+                    futures.append(
+                        executor.submit(
+                            dump_image,
+                            extract_video_frame(source_path),
+                            dest_dir,
+                            source_path.stem,
+                            lossy_compress_image=False,
+                        )
+                    )
                 else:
                     futures.append(executor.submit(extract_and_dump_video, dest_dir, source_path, include_image=True))
             else:

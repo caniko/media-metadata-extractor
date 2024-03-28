@@ -1,4 +1,4 @@
-from mextractor.base import MextractorMetadata
+from mextractor.base import load_video
 from mextractor.workflow import extract_and_dump_video
 from tests import OUTPUT_PATH, STATICS_PATH
 
@@ -14,7 +14,7 @@ def test_video_include_image():
         lossy_compress_image=True,
     )
 
-    loaded_metadata = MextractorMetadata.load(mextractor_dir=OUTPUT_PATH / f"{metadata.name}.mextractor")
+    loaded_metadata = load_video(mextractor_dir=OUTPUT_PATH / f"{metadata.name}.mextractor")
     assert loaded_metadata
     assert loaded_metadata.image is not None
 
@@ -22,6 +22,6 @@ def test_video_include_image():
 def test_video():
     metadata = extract_and_dump_video(dump_dir=OUTPUT_PATH, path_to_video=TEST_VIDEO_PATH, include_image=False)
 
-    loaded_metadata = MextractorMetadata.load(mextractor_dir=OUTPUT_PATH / f"{metadata.name}.mextractor")
+    loaded_metadata = load_video(mextractor_dir=OUTPUT_PATH / f"{metadata.name}.mextractor")
     assert loaded_metadata
     assert loaded_metadata.image is None
