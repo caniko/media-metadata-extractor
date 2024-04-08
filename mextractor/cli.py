@@ -1,27 +1,25 @@
-from typing import Optional
 
-import click
+import typer
 from pydantic import DirectoryPath
+from typing_extensions import Annotated
 
 from mextractor.constants import VIDEO_SUFFIXES
 from mextractor.workflow import mextract_videos_in_subdirs
 
-
-@click.group
-def mextractor_cli():
-    pass
+cli_app = typer.Typer()
 
 
-@mextractor_cli.command()
-@click.argument("root_dir", required=True, type=str)
-@click.option(
-    "-s",
-    "--suffix",
-    "video_file_suffix",
-    help=f"Suffix of the video files in the sub directories, leaving undefined will "
-    f"fallback to all video suffixes {VIDEO_SUFFIXES}",
-    type=str,
-)
-@click.option("-f", "--only-frame", is_flag=True)
-def video_subdirs(root_dir: DirectoryPath, video_file_suffix: Optional[str] = None, only_frame: bool = False) -> None:
-    mextract_videos_in_subdirs(root_dir, video_file_suffix, only_frame=only_frame)
+@cli_app.command()
+def extract(
+    start_dir: Annotated[
+        DirectoryPath,
+        typer.Argument(
+            help="The directory to start the scan; every subdir will be checked. Default to CWD or working directory.",
+        ),
+    ],
+    video_suffixes: Annotated[
+        list[str], typer.Option(help="Limit the suffixes that will be scanned, omit to include all")
+    ] = VIDEO_SUFFIXES,
+    only_frame: Annotated[bool, typer.Option(is_flag=True, flag_value=True)] = False,
+) -> None:
+    mextract_videos_in_subdirs(start_dir, video_suffixes, only_frame=only_frame)
