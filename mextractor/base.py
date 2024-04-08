@@ -1,9 +1,9 @@
 import logging
 import shutil
-from typing import Optional, Self, ClassVar
+from typing import Any, ClassVar, Optional, Self
 
 import cv2
-from pydantic import BaseModel, DirectoryPath, FilePath
+from pydantic import BaseModel, DirectoryPath, FilePath, PositiveInt, model_validator
 from pydantic_numpy import NpNDArrayUint8
 from ruamel.yaml import YAML
 
@@ -14,11 +14,21 @@ logger = logging.getLogger()
 
 
 class BaseMextractorMetadata(BaseModel, frozen=True):
+    version: PositiveInt
     name: str
     resolution: tuple[int, int]
     image: Optional[NpNDArrayUint8] = None
 
     dump_suffix: ClassVar[str]
+
+    @model_validator(mode="before")
+    @classmethod
+    def no_version_fallback(cls, data) -> Any:
+        # Didn't have version in the metadata file before v5.1.0; make sure it is v1 in its absence
+        # TODO: Will be removed in v6.0.0
+        if "version" not in data:
+            data["version"] = 1
+        return data
 
     @classmethod
     def load(cls, mextractor_dir: DirectoryPath) -> Self:
@@ -77,9 +87,16 @@ load_image = ImageMextractorMetadata.load
 
 class VideoMextractorMetadata(BaseMextractorMetadata):
     average_fps: str
-    video_length_in_seconds: float
+    video_length_in_seconds: Optional[float] = None
 
     dump_suffix = "video"
+
+    @model_validator(mode="after")
+    def validate_video_length_in_seconds(self) -> Self:
+        if self.version > 1 and self.video_length_in_seconds is None:
+            msg = "video_length_in_seconds must be defined for version 2 or higher"
+            raise AttributeError(msg)
+        return self
 
 
 load_video = VideoMextractorMetadata.load

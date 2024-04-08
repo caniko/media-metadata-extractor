@@ -21,6 +21,7 @@ def test_video_include_image():
 
 def test_video():
     metadata = extract_and_dump_video(dump_dir=OUTPUT_PATH, path_to_video=TEST_VIDEO_PATH, include_image=False)
+    assert metadata.video_length_in_seconds
 
     loaded_metadata = load_video(mextractor_dir=OUTPUT_PATH / f"{metadata.name}.mextractor")
     assert loaded_metadata
