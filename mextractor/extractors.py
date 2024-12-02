@@ -1,7 +1,7 @@
 import cv2
 from pydantic import FilePath, validate_call
 
-from mextractor.base import ImageMextractorMetadata, VideoMextractorMetadata
+from mextractor.base import MEXTRACTOR_SCHEMA_VERSION, ImageMextractorMetadata, VideoMextractorMetadata
 
 
 @validate_call
@@ -9,6 +9,7 @@ def extract_image(path_to_image: FilePath, include_image: bool = True) -> ImageM
     image = cv2.imread(str(path_to_image))
 
     return ImageMextractorMetadata(
+        version=MEXTRACTOR_SCHEMA_VERSION,
         name=path_to_image.stem,
         resolution=(image.shape[1], image.shape[0]),
         image=image if include_image else None,
@@ -68,12 +69,13 @@ def extract_video(
         raise ValueError("No video stream found")
 
     # Assuming the first video stream is the one we want
-    video_stream_metadata = video_streams[0]
+    metadata = video_streams[0]
 
     return VideoMextractorMetadata(
+        version=MEXTRACTOR_SCHEMA_VERSION,
         name=path_to_video.stem,
-        resolution=(video_stream_metadata["width"], video_stream_metadata["height"]),
-        average_fps=video_stream_metadata["avg_frame_rate"],
+        resolution=(metadata["width"], metadata["height"]),
+        average_fps=int(metadata["nb_frames"]) / float(metadata["duration"]),
         video_length_in_seconds=float(ffmpeg_probe["format"]["duration"]),
         image=extract_video_frame(path_to_video, frame_to_extract_time) if include_image else None,
     )

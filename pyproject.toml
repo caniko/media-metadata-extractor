@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mextractor"
-version = "6.0.0"
+version = "6.0.2"
 description = "mextractor can extract media metadata to YAML and read them"
 readme = "README.md"
 repository = "https://github.com/caniko/media-metadata-extractor"
@@ -27,7 +27,6 @@ pydantic = "^2.0"
 pydantic-numpy = ">=7.0.0"
 
 opencv-python = "^4.6.0"
-
 ffmpeg-python = {version = "*", optional = true}
 
 [tool.poetry.extras]

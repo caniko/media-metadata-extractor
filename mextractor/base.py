@@ -1,10 +1,10 @@
 import logging
 import shutil
-from typing import Any, ClassVar, Optional, Self
+from typing import Any, Final, Optional, Self
 
 import cv2
-from pydantic import BaseModel, DirectoryPath, FilePath, PositiveInt, model_validator
-from pydantic_numpy import NpNDArrayUint8
+from pydantic import BaseModel, DirectoryPath, Field, FilePath, PositiveInt, model_validator
+from pydantic_numpy.typing import NpNDArrayUint8
 from ruamel.yaml import YAML
 
 from mextractor.constants import DUMP_PATH_SUFFIX
@@ -13,19 +13,19 @@ from mextractor.utils import dump_image
 logger = logging.getLogger()
 
 
+MEXTRACTOR_SCHEMA_VERSION: Final[int] = 2
+
+
 class BaseMextractorMetadata(BaseModel, frozen=True):
     version: PositiveInt
     name: str
     resolution: tuple[int, int]
-    image: Optional[NpNDArrayUint8] = None
-
-    dump_suffix: ClassVar[str]
+    image: Optional[NpNDArrayUint8] = Field(None, exclude=True)
 
     @model_validator(mode="before")
     @classmethod
     def no_version_fallback(cls, data) -> Any:
         # Didn't have version in the metadata file before v5.1.0; make sure it is v1 in its absence
-        # TODO: Will be removed in v6.0.0
         if "version" not in data:
             data["version"] = 1
         return data
@@ -67,7 +67,7 @@ class BaseMextractorMetadata(BaseModel, frozen=True):
             shutil.rmtree(dump_path)
         dump_path.mkdir()
 
-        metadata = self.dict(exclude={"image"}, exclude_unset=True)
+        metadata = self.model_dump(exclude_unset=True)
 
         if include_image:
             dump_image(self.image, dump_path, self.name, lossy_compress_image)
@@ -78,18 +78,15 @@ class BaseMextractorMetadata(BaseModel, frozen=True):
         return dump_dir
 
 
-class ImageMextractorMetadata(BaseMextractorMetadata):
-    dump_suffix = "image"
+class ImageMextractorMetadata(BaseMextractorMetadata): ...
 
 
 load_image = ImageMextractorMetadata.load
 
 
 class VideoMextractorMetadata(BaseMextractorMetadata):
-    average_fps: str
+    average_fps: float
     video_length_in_seconds: Optional[float] = None
-
-    dump_suffix = "video"
 
     @model_validator(mode="after")
     def validate_video_length_in_seconds(self) -> Self:
