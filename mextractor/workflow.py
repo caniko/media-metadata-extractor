@@ -22,6 +22,7 @@ def extract_and_dump_image(
     return metadata
 
 
+@validate_call
 def extract_and_dump_video(
     dump_dir: DirectoryPath,
     path_to_video: FilePath,

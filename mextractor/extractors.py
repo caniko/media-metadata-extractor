@@ -68,12 +68,12 @@ def extract_video(
         raise ValueError("No video stream found")
 
     # Assuming the first video stream is the one we want
-    video_stream_metadata = video_streams[0]
+    metadata = video_streams[0]
 
     return VideoMextractorMetadata(
         name=path_to_video.stem,
-        resolution=(video_stream_metadata["width"], video_stream_metadata["height"]),
-        average_fps=video_stream_metadata["avg_frame_rate"],
+        resolution=(metadata["width"], metadata["height"]),
+        average_fps=int(metadata["nb_frames"]) / float(metadata["duration"]),
         video_length_in_seconds=float(ffmpeg_probe["format"]["duration"]),
         image=extract_video_frame(path_to_video, frame_to_extract_time) if include_image else None,
     )

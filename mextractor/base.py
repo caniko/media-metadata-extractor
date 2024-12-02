@@ -1,10 +1,10 @@
 import logging
 import shutil
-from typing import Any, ClassVar, Optional, Self
+from typing import ClassVar, Final, Optional, Self
 
 import cv2
-from pydantic import BaseModel, DirectoryPath, FilePath, PositiveInt, model_validator
-from pydantic_numpy import NpNDArrayUint8
+from pydantic import BaseModel, DirectoryPath, Field, FilePath, PositiveInt, model_validator
+from pydantic_numpy.typing import NpNDArrayUint8
 from ruamel.yaml import YAML
 
 from mextractor.constants import DUMP_PATH_SUFFIX
@@ -13,22 +13,16 @@ from mextractor.utils import dump_image
 logger = logging.getLogger()
 
 
+MEXTRACTOR_SCHEMA_VERSION: Final[int] = 2
+
+
 class BaseMextractorMetadata(BaseModel, frozen=True):
-    version: PositiveInt
+    version: PositiveInt = MEXTRACTOR_SCHEMA_VERSION
     name: str
     resolution: tuple[int, int]
-    image: Optional[NpNDArrayUint8] = None
+    image: Optional[NpNDArrayUint8] = Field(None, exclude=True)
 
     dump_suffix: ClassVar[str]
-
-    @model_validator(mode="before")
-    @classmethod
-    def no_version_fallback(cls, data) -> Any:
-        # Didn't have version in the metadata file before v5.1.0; make sure it is v1 in its absence
-        # TODO: Will be removed in v6.0.0
-        if "version" not in data:
-            data["version"] = 1
-        return data
 
     @classmethod
     def load(cls, mextractor_dir: DirectoryPath) -> Self:
@@ -67,7 +61,7 @@ class BaseMextractorMetadata(BaseModel, frozen=True):
             shutil.rmtree(dump_path)
         dump_path.mkdir()
 
-        metadata = self.dict(exclude={"image"}, exclude_unset=True)
+        metadata = self.model_dump(exclude_unset=True)
 
         if include_image:
             dump_image(self.image, dump_path, self.name, lossy_compress_image)
@@ -86,7 +80,7 @@ load_image = ImageMextractorMetadata.load
 
 
 class VideoMextractorMetadata(BaseMextractorMetadata):
-    average_fps: str
+    average_fps: float
     video_length_in_seconds: Optional[float] = None
 
     dump_suffix = "video"
